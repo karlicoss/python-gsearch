@@ -33,10 +33,16 @@ except ImportError:
 isPython2 = sys.version.startswith('2')
 
 
-def download(query, num_results):
+def download(query, num_results, limit_to=None, order_by='relevance'):
 	"""
 	downloads HTML after google search
 	"""
+	tbs_param = []
+	if limit_to is not None:
+		tbs_param.append(('qdr', DATE_LIMITS[limit_to]))
+	if order_by == 'date':
+		tbs_param.append(('sbd', '1'))
+
 	# https://stackoverflow.com/questions/11818362/how-to-deal-with-unicode-string-in-url-in-python3
 	name = quote(query)
 
@@ -44,6 +50,9 @@ def download(query, num_results):
 	url = 'http://www.google.com/search?q=' + name
 	if num_results != 10:
 		url += '&num=' + str(num_results)  # adding this param might hint Google towards a bot
+	if len(tbs_param) > 0:
+		url += '&tbs=' + ','.join(k + ':' + v for k, v in tbs_param)
+	print(url)
 	req = request.Request(url, headers={
 		'User-Agent' : choice(user_agents),
 		# 'Referer': 'google.com'
@@ -98,12 +107,21 @@ def convert_unicode(text):
 	return s
 
 
-def search(query, num_results=10):
+DATE_LIMITS = {
+	'hour' : 'h',
+	'day'  : 'd',
+	'week' : 'w',
+	'month': 'm',
+	'year' : 'y',
+}
+
+# TODO start?
+def search(query, num_results=10, **kwargs):
 	"""
 	searches google for :query and returns a list of tuples
 	of the format (name, url)
 	"""
-	data = download(query, num_results)
+	data = download(query, num_results, **kwargs)
 	results = re.findall(r'\<h3.*?\>.*?\<\/h3\>', data, re.IGNORECASE)
 	if results is None or len(results) == 0:
 		print('No results where found. Did the rate limit exceed?')
